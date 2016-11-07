@@ -17,13 +17,18 @@ test('Check laws', (t) => {
   testLaw(lawFunctor, 'Functor', 'identity', [Par.of, equals])
   testLaw(lawFunctor, 'Functor', 'composition', [Par.of, equals, a => [a], a => [a, a]])
 
-  t.same(Par.lift({to: 1}).map(a => a + 1).foldPar(a => Identity(a.to * 10), Identity), Identity(11))
-  t.same(Par.lift({to: 1}).ap(Par.of(a => a + 1)).foldPar(a => Identity(a.to * 10), Identity), Identity(11))
-  t.same(Par.lift({to: 1}).ap(Par.lift({to: 1}).map(a => b => a + b)).foldPar(a => Identity(a.to * 10), Identity), Identity(20))
-
   t.end()
 })
 
+test('misc', (t) => {
+  const run = (name, expected, v) => t.same(v.foldPar(a => Identity(a.to * 10), Identity), expected, name)
+
+  run('map', Identity(11), Par.lift({to: 1}).map(a => a + 1))
+  run('ap', Identity(11), Par.lift({to: 1}).ap(Par.of(a => a + 1)))
+  run('ap.map', Identity(20), Par.lift({to: 1}).ap(Par.lift({to: 1}).map(a => b => a + b)))
+
+  t.end()
+})
 test('fold order should be left to right', (t) => {
   const f = a1 => a2 => a3 => '' + a1 + a2 + a3
   const a1 = Par.lift(1)
@@ -35,17 +40,19 @@ test('fold order should be left to right', (t) => {
   t.same(tree.foldPar(i => {
     order.push(i)
     return Identity(i)
-  }, Identity), Identity('12123'))
-  t.same(order, [1, 2, 1, 2, 3])
+  }, Identity), Identity('12123'), 'produces correct result')
+  t.same(order, [1, 2, 1, 2, 3], 'order of fold is correct')
 
   t.end()
 })
 
 test('toString', (t) => {
-  t.same(Par.Pure.toString(), 'Par.Pure')
-  t.same(Par.Pure(1).toString(), 'Par.Pure(1)')
-  t.same(Par.Apply.toString(), 'Par.Apply')
-  t.same(Par.Apply(1, Par.Pure(a => a)).toString(), 'Par.Apply(1, Par.Pure(a => a))')
+  const run = (expected, v) => t.same(v.toString(), expected, expected)
+
+  run('Par.Pure', Par.Pure)
+  run('Par.Pure(1)', Par.Pure(1))
+  run('Par.Apply', Par.Apply)
+  run('Par.Apply(1, Par.Pure(a => a))', Par.Apply(1, Par.Pure(a => a)))
 
   t.end()
 })

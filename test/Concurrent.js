@@ -24,43 +24,38 @@ test('Check laws', (t) => {
 })
 
 test('misc', (t) => {
-  t.same(
-    Concurrent
-      .lift({to: 1})
-      .chain((a) => Concurrent.lift({to: a + 1}))
-      .map(a => b => a + b)
-      .ap(Concurrent.of(f => f(1)))
-      .foldMap(a => Identity(a.to * 10), Identity),
-    Identity(111)
+  const run = (name, expected, v) => t.same(v.foldMap(a => Identity(a.to * 10), Identity), expected, name)
+
+  run('lift.chain.map.ap', Identity(111), Concurrent
+    .lift({to: 1})
+    .chain((a) => Concurrent.lift({to: a + 1}))
+    .map(a => b => a + b)
+    .ap(Concurrent.of(f => f(1)))
   )
 
-  t.same(
-    Concurrent
-      .lift({to: 1})
-      .chain((a) => Concurrent.lift({to: a + 1}))
-      .map(a => a + 1)
-      .foldMap(a => Identity(a.to * 10), Identity),
-    Identity(111)
+  run('lift.chain.map', Identity(111), Concurrent
+    .lift({to: 1})
+    .chain((a) => Concurrent.lift({to: a + 1}))
+    .map(a => a + 1)
   )
 
-  t.same(
-    Concurrent
-      .lift({to: 1})
-      .chain((a) => Concurrent.lift({to: a + 1}))
-      .foldMap(a => Identity(a.to * 10), Identity),
-    Identity(110)
+  run('lift.chain', Identity(110), Concurrent
+    .lift({to: 1})
+    .chain((a) => Concurrent.lift({to: a + 1}))
   )
 
   t.end()
 })
 
 test('toString', (t) => {
-  t.same(Concurrent.Lift.toString(), 'Concurrent.Lift')
-  t.same(Concurrent.Par.toString(), 'Concurrent.Par')
-  t.same(Concurrent.Seq.toString(), 'Concurrent.Seq')
-  t.same(Concurrent.Seq(1).toString(), 'Concurrent.Seq(1)')
-  t.same(Concurrent.Par(1).toString(), 'Concurrent.Par(1)')
-  t.same(Concurrent.Lift(1).toString(), 'Concurrent.Lift(1)')
+  const run = (expected, v) => t.same(v.toString(), expected, expected)
+
+  run('Concurrent.Lift', Concurrent.Lift)
+  run('Concurrent.Par', Concurrent.Par)
+  run('Concurrent.Seq', Concurrent.Seq)
+  run('Concurrent.Seq(1)', Concurrent.Seq(1))
+  run('Concurrent.Par(1)', Concurrent.Par(1))
+  run('Concurrent.Lift(1)', Concurrent.Lift(1))
 
   t.end()
 })

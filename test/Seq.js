@@ -38,10 +38,12 @@ test('misc', (t) => {
 })
 
 test('toString', (t) => {
-  t.same(Seq.Pure.toString(), 'Seq.Pure')
-  t.same(Seq.Roll.toString(), 'Seq.Roll')
-  t.same(Seq.Pure(1).toString(), 'Seq.Pure(1)')
-  t.same(Seq.Roll(1, Seq.Pure).toString(), 'Seq.Roll(1, Seq.Pure)')
+  const run = (expected, v) => t.same(v.toString(), expected, expected)
+
+  run('Seq.Pure', Seq.Pure)
+  run('Seq.Roll', Seq.Roll)
+  run('Seq.Pure(1)', Seq.Pure(1))
+  run('Seq.Roll(1, Seq.Pure)', Seq.Roll(1, Seq.Pure))
 
   t.end()
 })

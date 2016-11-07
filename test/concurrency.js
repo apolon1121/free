@@ -19,13 +19,13 @@ const interpreter = {
   Par: FutureAp,
 }
 
-const futureEq = (t, expectedDuration, expectedResult, name, val) => {
+const futureEq = (t, expectedDuration, expectedResult, val) => {
   const now = new Date().getTime()
   val.interpret(interpreter).fork(t.fail, a => {
     const end = new Date().getTime()
     const duration = end - now
-    t.same(a, expectedResult)
-    t.eqWithAccuracy(duration, expectedDuration, 25)
+    t.same(a, expectedResult, `result is correct (${expectedResult})`)
+    t.eqWithAccuracy(duration, expectedDuration, 25, `computation takes expected duration (${expectedDuration})`)
   })
 }
 
@@ -70,16 +70,19 @@ test('triangle', (t) => {
 
   t.plan(cases.length * 2)
   cases.forEach(({ result, duration, fragment }) => {
-    futureEq(t, duration, result, `${result}-${duration}`, fragment)
+    futureEq(t, duration, result, fragment)
   })
 })
 
-test('triangle', (t) => {
-  t.same(Concurrent.lift(1).par().seq().up().foldMap(Identity, Identity), Identity(1))
-  t.same(Concurrent.of(1).par().seq().up().foldMap(Identity, Identity), Identity(1))
-  t.same(Concurrent.of(1).seq().par().up().foldMap(Identity, Identity), Identity(1))
-  t.same(Concurrent.of(1).par().up().seq().up().foldMap(Identity, Identity), Identity(1))
-  t.same(Concurrent.of(1).par().up().par().up().foldMap(Identity, Identity), Identity(1))
+test('moving with par/seq/up produces same result', (t) => {
+  const run = v => t.same(v.foldMap(Identity, Identity), Identity(1), v.toString())
+
+  run(Concurrent.lift(1).par().seq().up())
+  run(Concurrent.of(1).par().seq().up())
+  run(Concurrent.of(1).seq().par().up())
+  run(Concurrent.of(1).par().up().seq().up())
+  run(Concurrent.of(1).par().up().par().up())
+
   t.end()
 })
 
@@ -91,7 +94,7 @@ test('Future and FutureAp', (t) => {
     val.fork(t.fail, a => {
       const end = new Date().getTime()
       const duration = end - now
-      t.eqWithAccuracy(duration, expectedDuration, 15)
+      t.eqWithAccuracy(duration, expectedDuration, 15, `computation takes expected duration (${expectedDuration})`)
     })
   }
 
