@@ -44,7 +44,7 @@ test('triangle', (t) => {
     {
       result: 'a.100a.200a.100a.200.50',
       duration: 250,
-      fragment: lift2(a => b => a + b, shout('a', 100), shout('a', 200)).seq().chain(v => shout(v + v, 50)).up(),
+      fragment: lift2(a => b => a + b, shout('a', 100), shout('a', 200)).seq().chain(v => shout(v + v, 50).seq()).up(),
     },
     {
       result: 'a.100a.200a.100',
