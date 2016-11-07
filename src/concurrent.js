@@ -98,7 +98,7 @@ Seq.lift = (x) => Seq.Roll(x, Seq.Pure)
 Seq.prototype.foldMap = function(f, T) {
   return this.cata({
     Pure: a => of(T, a),
-    Roll: (x, y) => chain(map(a => a.foldMap(f, T), y), f(x)),
+    Roll: (x, y) => chain(v => y(v).foldMap(f, T), f(x)),
   })
 }
 
