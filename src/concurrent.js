@@ -42,13 +42,13 @@ Par.prototype.ap = function(pf) {
 const id = a => a
 Par.lift = (x) => Par.Apply(x, Par.Pure(id))
 
-Par.prototype.foldMap = function(f, T) {
+Par.prototype.foldPar = function(f, T) {
   return this.cata({
     Pure: a => of(T, a),
     Apply: (x, y) => {
       // interpert instructions first so that fold is left to right
       var fx = f(x)
-      var ff = y.foldMap(f, T)
+      var ff = y.foldPar(f, T)
       return ap(ff, fx)
     },
   })
@@ -95,10 +95,10 @@ Seq.prototype.chain = function(f) {
 
 Seq.lift = (x) => Seq.Roll(x, Seq.Pure)
 
-Seq.prototype.foldMap = function(f, T) {
+Seq.prototype.foldSeq = function(f, T) {
   return this.cata({
     Pure: a => of(T, a),
-    Roll: (x, y) => chain(v => y(v).foldMap(f, T), f(x)),
+    Roll: (x, y) => chain(v => y(v).foldSeq(f, T), f(x)),
   })
 }
 
@@ -145,8 +145,8 @@ Concurrent.prototype.chain = function(f) {
 Concurrent.prototype.foldMap = function(f, T) {
   return this.cata({
     Lift: a => f(a),
-    Par: a => a.foldMap(b => b.foldMap(f, T), T),
-    Seq: a => a.foldMap(b => b.foldMap(f, T), T),
+    Par: a => a.foldPar(b => b.foldMap(f, T), T),
+    Seq: a => a.foldSeq(b => b.foldMap(f, T), T),
   })
 }
 
@@ -163,12 +163,12 @@ Concurrent.prototype.interpret = function(interpreter) {
   const { runSeq, runPar, seqToPar, parToSeq, Seq, Par } = interpreter
   return this.cata({
     Lift: a => runSeq(a),
-    Par: a => a.foldMap(x => x.cata({
+    Par: a => a.foldPar(x => x.cata({
       Lift: (b) => runPar(b),
       Par: (b) => x.interpret(interpreter),
       Seq: (b) => seqToPar(x.interpret(interpreter)),
     }), Par),
-    Seq: a => a.foldMap(x => x.cata({
+    Seq: a => a.foldSeq(x => x.cata({
       Lift: (b) => runSeq(b),
       Par: (b) => parToSeq(x.interpret(interpreter)),
       Seq: (b) => x.interpret(interpreter),

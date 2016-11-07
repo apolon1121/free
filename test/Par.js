@@ -17,9 +17,9 @@ test('Check laws', (t) => {
   testLaw(lawFunctor, 'Functor', 'identity', [Par.of, equals])
   testLaw(lawFunctor, 'Functor', 'composition', [Par.of, equals, a => [a], a => [a, a]])
 
-  t.same(Par.lift({to: 1}).map(a => a + 1).foldMap(a => Identity(a.to * 10), Identity), Identity(11))
-  t.same(Par.lift({to: 1}).ap(Par.of(a => a + 1)).foldMap(a => Identity(a.to * 10), Identity), Identity(11))
-  t.same(Par.lift({to: 1}).ap(Par.lift({to: 1}).map(a => b => a + b)).foldMap(a => Identity(a.to * 10), Identity), Identity(20))
+  t.same(Par.lift({to: 1}).map(a => a + 1).foldPar(a => Identity(a.to * 10), Identity), Identity(11))
+  t.same(Par.lift({to: 1}).ap(Par.of(a => a + 1)).foldPar(a => Identity(a.to * 10), Identity), Identity(11))
+  t.same(Par.lift({to: 1}).ap(Par.lift({to: 1}).map(a => b => a + b)).foldPar(a => Identity(a.to * 10), Identity), Identity(20))
 
   t.end()
 })
@@ -32,7 +32,7 @@ test('fold order should be left to right', (t) => {
   const tree = lift3(f, a1, a2, lift3(f, a1, a2, a3))
   let order = []
 
-  t.same(tree.foldMap(i => {
+  t.same(tree.foldPar(i => {
     order.push(i)
     return Identity(i)
   }, Identity), Identity('12123'))

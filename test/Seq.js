@@ -30,7 +30,7 @@ test('misc', (t) => {
       .chain((a) => Seq.lift({to: a + 1}))
       .map(a => b => a + b)
       .ap(Seq.of(f => f(1)))
-      .foldMap(a => Identity(a.to * 10), Identity),
+      .foldSeq(a => Identity(a.to * 10), Identity),
     Identity(111)
   )
 
