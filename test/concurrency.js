@@ -2,7 +2,7 @@ const { test } = require('tap')
 const {
   Concurrent,
   Identity, Future, FutureAp,
-  of, ap, lift2, lift3,
+  ap, lift2, lift3,
 } = require('./lib')
 
 const delay = (val, ms) => (rej, res) => setTimeout(res, ms, val)
@@ -15,8 +15,8 @@ const interpreter = {
   runPar: ({tag, ms}) => FutureAp(delay(tag, ms)),
   seqToPar: a => a.par(),
   parToSeq: a => a.seq(),
-  Seq: a => of(Future, a),
-  Par: a => of(FutureAp, a),
+  Seq: Future,
+  Par: FutureAp,
 }
 
 const futureEq = (t, expectedDuration, expectedResult, name, val) => {
@@ -145,8 +145,8 @@ test('Check for concurrency', (t) => {
     runPar: (inst) => FutureAp(actionToComp(inst)),
     seqToPar: a => a.par(),
     parToSeq: a => a.seq(),
-    Seq: a => of(Future, a),
-    Par: a => of(FutureAp, a),
+    Seq: Future,
+    Par: FutureAp,
   }
 
   tre.interpret(interpreter)

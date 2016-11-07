@@ -155,37 +155,24 @@ Concurrent.prototype.foldMap = function(f, T) {
 //   , runPar :: forall x. f x -> g x
 //   , seqToPar :: forall x. m x -> g x
 //   , parToSeq :: forall x. g x -> m x
+//   , Par :: TypeRep g
+//   , Seq :: TypeRep m
 //   }
 
 Concurrent.prototype.interpret = function(interpreter) {
   const { runSeq, runPar, seqToPar, parToSeq, Seq, Par } = interpreter
   return this.cata({
     Lift: a => runSeq(a),
-    Par: function intRar(a) {
-      return a.cata({
-        Pure: (x) => Par(x),
-        Apply: (x, y) => {
-          const fx = x.cata({
-            Lift: (b) => runPar(b),
-            Par: (b) => x.interpret(interpreter),
-            Seq: (b) => seqToPar(x.interpret(interpreter)),
-          })
-          const ff = intRar(y)
-          return ap(ff, fx)
-        },
-      })
-    },
-    Seq: a => a.cata({
-      Pure: (x) => Seq(x),
-      Roll: (x, y) => {
-        const my = x.cata({
-          Lift: (b) => runSeq(b),
-          Par: (b) => parToSeq(x.interpret(interpreter)),
-          Seq: (b) => x.interpret(interpreter),
-        })
-        return chain((v) => y(v).up().interpret(interpreter), my)
-      },
-    }),
+    Par: a => a.foldMap(x => x.cata({
+      Lift: (b) => runPar(b),
+      Par: (b) => x.interpret(interpreter),
+      Seq: (b) => seqToPar(x.interpret(interpreter)),
+    }), Par),
+    Seq: a => a.foldMap(x => x.cata({
+      Lift: (b) => runSeq(b),
+      Par: (b) => parToSeq(x.interpret(interpreter)),
+      Seq: (b) => x.interpret(interpreter),
+    }), Seq),
   })
 }
 
