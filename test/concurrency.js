@@ -47,7 +47,10 @@ test('triangle', (t) => {
     {
       result: 'a.100a.200a.100a.200.50',
       duration: 250,
-      fragment: fromSeq(lift2(a => b => a + b, shout('a', 100), shout('a', 200)).seq().chain(v => shout(v + v, 50).seq())),
+      fragment:
+        fromPar(
+          lift2(a => b => a + b, shout('a', 100), shout('a', 200))
+        ).chain(v => shoutSeq(v + v, 50)),
     },
     {
       result: 'a.100a.200a.100',
@@ -62,7 +65,7 @@ test('triangle', (t) => {
     {
       result: 'a.100a.200a.100a.200.50',
       duration: 250,
-      fragment: fromPar(lift2(a => b => a + b, shout('a', 100), shout('a', 200))).chain(v => shout(v + v, 50)),
+      fragment: fromPar(lift2(a => b => a + b, shout('a', 100), shout('a', 200))).chain(v => shoutSeq(v + v, 50)),
     },
     {
       result: 'a.100.200b.100',
@@ -78,13 +81,12 @@ test('triangle', (t) => {
 })
 
 test('moving with par/seq/fromPar/fromSeq produces same result', (t) => {
-  const run = v => t.same(v.fold(Identity, Identity), Identity(1), v.toString())
+  const run = (n, v) => t.same(v.fold(Identity, Identity), Identity(n), v.toString())
 
-  run(fromSeq(Concurrent.lift(1).par().seq()))
-  run(fromSeq(Concurrent.of(1).par().seq()))
-  run(fromPar(Concurrent.of(1).seq().par()))
-  run(fromSeq(fromPar(Concurrent.of(1).par()).seq()))
-  run(fromPar(fromPar(Concurrent.of(1).par()).par()))
+  run(1, fromSeq(fromPar(Concurrent.of(1).par()).seq()))
+  run(2, fromPar(fromSeq(Concurrent.of(2).seq()).par()))
+  run(3, fromPar(fromPar(Concurrent.of(3).par()).par()))
+  run(4, fromSeq(fromSeq(Concurrent.of(4).seq()).seq()))
 
   t.end()
 })
@@ -110,27 +112,27 @@ test('Future and FutureAp', (t) => {
 test('Check for concurrency', (t) => {
   let orders = { start: [], end: [] }
   let tre = fromPar(ap(
-    lift3(
+    fromPar(lift3(
       pear3,
       shout('out.ap', 500),
       shout('out.ap', 400),
-      lift3(
+      fromPar(lift3(
         pear3,
         shout('out.ap', 100),
         shout('out.ap', 300),
         shout('out.ap', 200)
-      ).seq().chain((tout) =>
-        lift3(pear3,
+      )).chain((tout) =>
+        fromPar(lift3(pear3,
           shout('in.ap', 50),
           shout('in.ap', 250),
           shout('in.ap', 150)
-        ).map((tin) => [tout, tin]).seq()
+        ).map((tin) => [tout, tin]))
       ).par()
-    ).seq().chain((tout) =>
-      lift2(pear3,
+    )).chain((tout) =>
+      fromPar(lift2(pear3,
         shout('in.ap', 40),
         shout('in.ap', 140)
-      ).map((f) => (a) => [tout, f(a)]).seq()
+      ).map((f) => (a) => [tout, f(a)]))
     ).par(),
     shout('out.ap', 10).ap(Concurrent.of((a) => a).par())
   ))
