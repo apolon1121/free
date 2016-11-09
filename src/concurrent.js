@@ -1,123 +1,22 @@
-const patchAll = require('./fl-patch')
+const { toString, map, chain } = require('sanctuary-type-classes')
 const daggy = require('daggy')
-const { toString, of, map, ap, chain, lift2 } = require('sanctuary-type-classes')
-
-// data Par f a where
-const Par = daggy.taggedSum({
-  // Pure :: a -> Par f a
-  Pure: ['a'],
-  // Apply :: f a -> Par f (a -> b) -> Par f b
-  Apply: ['x', 'y'],
-})
-
-Par.Pure.toString = () => 'Par.Pure'
-
-Par.Apply.toString = () => 'Par.Apply'
-
-Par.prototype.toString = function() {
-  return this.cata({
-    Pure: (a) => `Par.Pure(${toString(a)})`,
-    Apply: (x, y) => `Par.Apply(${toString(x)}, ${toString(y)})`,
-  })
-}
-
-const compose = f => g => a => f(g(a))
-Par.prototype.map = function(f) {
-  return this.cata({
-    Pure: (a) => Par.Pure(f(a)),
-    Apply: (x, y) => Par.Apply(x, map(compose(f), y)),
-  })
-}
-
-Par.of = Par.Pure
-
-const flip = f => b => a => f(a)(b)
-Par.prototype.ap = function(pf) {
-  return pf.cata({
-    Pure: (f) => map(f, this),
-    Apply: (x, y) => Par.Apply(x, lift2(flip, y, this)),
-  })
-}
-
-const id = a => a
-Par.lift = (x) => Par.Apply(x, Par.Pure(id))
-
-Par.prototype.foldPar = function(f, T) {
-  return this.cata({
-    Pure: a => of(T, a),
-    Apply: (x, y) => {
-      // interpert instructions first so that fold is left to right
-      var fx = f(x)
-      var ff = y.foldPar(f, T)
-      return ap(ff, fx)
-    },
-  })
-}
-
-// data Seq f a where
-const Seq = daggy.taggedSum({
-  //   Pure :: a -> Seq f a
-  Pure: ['a'],
-  //   Roll :: f a -> (a -> Seq f b) -> Seq f b
-  Roll: ['x', 'y'],
-})
-
-Seq.Pure.toString = () => 'Seq.Pure'
-
-Seq.Roll.toString = () => 'Seq.Roll'
-
-Seq.prototype.toString = function() {
-  return this.cata({
-    Pure: (a) => `Seq.Pure(${toString(a)})`,
-    Roll: (x, y) => `Seq.Roll(${toString(x)}, ${toString(y)})`,
-  })
-}
-
-Seq.prototype.map = function(f) {
-  return this.cata({
-    Pure: a => Seq.Pure(f(a)),
-    Roll: (x, y) => Seq.Roll(x, map(a => map(f, a), y)),
-  })
-}
-
-Seq.of = Seq.Pure
-Seq.prototype.ap = function(mf) {
-  return chain(f => map(f, this), mf)
-}
-
-const kcompose = (bc, ab) => a => ab(a).chain(bc)
-Seq.prototype.chain = function(f) {
-  return this.cata({
-    Pure: a => f(a),
-    Roll: (x, y) => Seq.Roll(x, kcompose(f, y)),
-  })
-}
-
-Seq.lift = (x) => Seq.Roll(x, Seq.Pure)
-
-Seq.prototype.foldSeq = function(f, T) {
-  return this.cata({
-    Pure: a => of(T, a),
-    Roll: (x, y) => chain(v => y(v).foldSeq(f, T), f(x)),
-  })
-}
+const patchAll = require('./fl-patch')
+const Par = require('./par')
+const Seq = require('./seq')
 
 // data Concurrent f a where
+//   Lift :: f a -> Concurrent f a
+//   Seq :: Seq (Concurrent f) a -> Concurrent f a
+//   Par :: Par (Concurrent f) a -> Concurrent f a
 const Concurrent = daggy.taggedSum({
-  //   Lift :: f a -> Concurrent f a
   Lift: ['a'],
-  //   Seq :: Seq (Concurrent f) a -> Concurrent f a
   Seq: ['a'],
-  //   Par :: Par (Concurrent f) a -> Concurrent f a
   Par: ['a'],
 })
 
 Concurrent.Lift.toString = () => 'Concurrent.Lift'
-
 Concurrent.Par.toString = () => 'Concurrent.Par'
-
 Concurrent.Seq.toString = () => 'Concurrent.Seq'
-
 Concurrent.prototype.toString = function() {
   return this.cata({
     Lift: (a) => `Concurrent.Lift(${toString(a)})`,
@@ -128,7 +27,6 @@ Concurrent.prototype.toString = function() {
 Concurrent.lift = Concurrent.Lift
 
 Concurrent.prototype.map = function(f) {
-  // return ap(Concurrent.of(f), this)
   return Concurrent.Seq(map(f, this.seq()))
 }
 
@@ -214,14 +112,6 @@ Concurrent.prototype.par = function() {
   })
 }
 
-patchAll([
-  Seq, Seq.prototype,
-  Par, Par.prototype,
-  Concurrent, Concurrent.prototype,
-])
+patchAll([Concurrent, Concurrent.prototype])
 
-module.exports = {
-  Seq,
-  Par,
-  Concurrent,
-}
+module.exports = Concurrent
