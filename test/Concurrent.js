@@ -24,7 +24,7 @@ test('Check laws', (t) => {
 })
 
 test('misc', (t) => {
-  const run = (name, expected, v) => t.same(v.foldMap(a => Identity(a.to * 10), Identity), expected, name)
+  const run = (name, expected, v) => t.same(v.fold(a => Identity(a.to * 10), Identity), expected, name)
 
   run('lift.chain.map.ap', Identity(111), Concurrent
     .lift({to: 1})

@@ -40,11 +40,11 @@ Concurrent.prototype.chain = function(f) {
   return chain(a => f(a).seq(), this.seq()).up()
 }
 
-Concurrent.prototype.foldMap = function(f, T) {
+Concurrent.prototype.fold = function(f, T) {
   return this.cata({
     Lift: a => f(a),
-    Par: a => a.foldPar(b => b.foldMap(f, T), T),
-    Seq: a => a.foldSeq(b => b.foldMap(f, T), T),
+    Par: a => a.foldPar(b => b.fold(f, T), T),
+    Seq: a => a.foldSeq(b => b.fold(f, T), T),
   })
 }
 

@@ -75,7 +75,7 @@ test('triangle', (t) => {
 })
 
 test('moving with par/seq/up produces same result', (t) => {
-  const run = v => t.same(v.foldMap(Identity, Identity), Identity(1), v.toString())
+  const run = v => t.same(v.fold(Identity, Identity), Identity(1), v.toString())
 
   run(Concurrent.lift(1).par().seq().up())
   run(Concurrent.of(1).par().seq().up())
