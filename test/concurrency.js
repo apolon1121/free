@@ -5,6 +5,9 @@ const {
   ap, lift2, lift3,
 } = require('./lib')
 
+const fromPar = Concurrent.fromPar
+const fromSeq = Concurrent.fromSeq
+
 const delay = (val, ms) => (rej, res) => setTimeout(res, ms, val)
 const shoutSeq = (tag, ms) => Concurrent.lift({tag: `${tag}.${ms}`, ms})
 const shout = (tag, ms) => Concurrent.lift({tag: `${tag}.${ms}`, ms}).par()
@@ -44,27 +47,27 @@ test('triangle', (t) => {
     {
       result: 'a.100a.200a.100a.200.50',
       duration: 250,
-      fragment: lift2(a => b => a + b, shout('a', 100), shout('a', 200)).seq().chain(v => shout(v + v, 50).seq()).up(),
+      fragment: fromSeq(lift2(a => b => a + b, shout('a', 100), shout('a', 200)).seq().chain(v => shout(v + v, 50).seq())),
     },
     {
       result: 'a.100a.200a.100',
       duration: 200,
-      fragment: lift2(a => b => a + b, lift2(a => b => a + b, shout('a', 100), shout('a', 200)), shout('a', 100)).up(),
+      fragment: fromPar(lift2(a => b => a + b, lift2(a => b => a + b, shout('a', 100), shout('a', 200)), shout('a', 100))),
     },
     {
       result: 'a.100a.200a.100',
       duration: 200,
-      fragment: lift2(a => b => a + b, lift2(a => b => a + b, shout('a', 100).up().par(), shout('a', 200)), shout('a', 100)).up(),
+      fragment: fromPar(lift2(a => b => a + b, lift2(a => b => a + b, shout('a', 100), shout('a', 200)), shout('a', 100))),
     },
     {
       result: 'a.100a.200a.100a.200.50',
       duration: 250,
-      fragment: lift2(a => b => a + b, shout('a', 100), shout('a', 200)).up().chain(v => shout(v + v, 50)),
+      fragment: fromPar(lift2(a => b => a + b, shout('a', 100), shout('a', 200))).chain(v => shout(v + v, 50)),
     },
     {
       result: 'a.100.200b.100',
       duration: 300,
-      fragment: lift2(a => b => a + b, shoutSeq('a', 100).chain(a => shoutSeq(a, 200)).par(), shout('b', 100)).up(),
+      fragment: fromPar(lift2(a => b => a + b, shoutSeq('a', 100).chain(a => shoutSeq(a, 200)).par(), shout('b', 100))),
     },
   ]
 
@@ -74,14 +77,14 @@ test('triangle', (t) => {
   })
 })
 
-test('moving with par/seq/up produces same result', (t) => {
+test('moving with par/seq/fromPar/fromSeq produces same result', (t) => {
   const run = v => t.same(v.fold(Identity, Identity), Identity(1), v.toString())
 
-  run(Concurrent.lift(1).par().seq().up())
-  run(Concurrent.of(1).par().seq().up())
-  run(Concurrent.of(1).seq().par().up())
-  run(Concurrent.of(1).par().up().seq().up())
-  run(Concurrent.of(1).par().up().par().up())
+  run(fromSeq(Concurrent.lift(1).par().seq()))
+  run(fromSeq(Concurrent.of(1).par().seq()))
+  run(fromPar(Concurrent.of(1).seq().par()))
+  run(fromSeq(fromPar(Concurrent.of(1).par()).seq()))
+  run(fromPar(fromPar(Concurrent.of(1).par()).par()))
 
   t.end()
 })
@@ -106,7 +109,7 @@ test('Future and FutureAp', (t) => {
 
 test('Check for concurrency', (t) => {
   let orders = { start: [], end: [] }
-  let tre = ap(
+  let tre = fromPar(ap(
     lift3(
       pear3,
       shout('out.ap', 500),
@@ -130,8 +133,7 @@ test('Check for concurrency', (t) => {
       ).map((f) => (a) => [tout, f(a)]).seq()
     ).par(),
     shout('out.ap', 10).ap(Concurrent.of((a) => a).par())
-  )
-  .up()
+  ))
 
   const actionToComp = ({tag, ms}) => {
     return (rej, res) => {

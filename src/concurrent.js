@@ -37,7 +37,7 @@ Concurrent.prototype.ap = function(mf) {
 Concurrent.of = a => Concurrent.Seq(Seq.of(a))
 
 Concurrent.prototype.chain = function(f) {
-  return chain(a => f(a).seq(), this.seq()).up()
+  return Concurrent.fromSeq(chain(a => f(a).seq(), this.seq()))
 }
 
 Concurrent.prototype.fold = function(f, T) {
@@ -84,15 +84,11 @@ Seq.prototype.par = function() {
   return Par.lift(Concurrent.Seq(this))
 }
 
-// :: Par (Concurrent f) a -> Concurrent f a
-Par.prototype.up = function() {
-  return Concurrent.Par(this)
-}
+// fromPar :: Par (Concurrent f) a -> Concurrent f a
+Concurrent.fromPar = Concurrent.Par
 
-// :: Seq (Concurrent f) a -> Concurrent f a
-Seq.prototype.up = function() {
-  return Concurrent.Seq(this)
-}
+// fromSeq :: Seq (Concurrent f) a -> Concurrent f a
+Concurrent.fromSeq = Concurrent.Seq
 
 // :: Concurrent f a -> Seq (Concurrent f) a
 Concurrent.prototype.seq = function() {
