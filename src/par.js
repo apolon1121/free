@@ -11,6 +11,7 @@ const Par = daggy.taggedSum({
   Apply: ['x', 'y'],
 })
 
+Par.toString = () => 'Par'
 Par.Pure.toString = () => 'Par.Pure'
 Par.Apply.toString = () => 'Par.Apply'
 Par.prototype.toString = function() {
@@ -49,6 +50,21 @@ Par.prototype.foldPar = function(f, T) {
       return ap(ff, fx)
     },
   })
+}
+
+// :: Par f a ~> (f -> g) -> Par g a
+Par.prototype.hoistPar = function(f) {
+  return this.foldPar(compose(Par.lift)(f), Par)
+}
+
+// :: (Applicative f) => Par f a ~> TypeRep f -> f a
+Par.prototype.retractPar = function(m) {
+  return this.foldPar(id, m)
+}
+
+// :: Par f a ~> (f -> Par g a) -> Par g a
+Par.prototype.graftPar = function(f) {
+  return this.foldPar(f, Par)
 }
 
 patchAll([Par, Par.prototype])

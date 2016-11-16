@@ -3,6 +3,7 @@ const daggy = require('daggy')
 const patchAll = require('./fl-patch')
 const Par = require('./par')
 const Seq = require('./seq')
+const { id, compose } = require('./utils')
 
 // data Concurrent f a where
 //   Lift :: f a -> Concurrent f a
@@ -14,6 +15,7 @@ const Concurrent = daggy.taggedSum({
   Par: ['a'],
 })
 
+Concurrent.toString = () => 'Concurrent'
 Concurrent.Lift.toString = () => 'Concurrent.Lift'
 Concurrent.Par.toString = () => 'Concurrent.Par'
 Concurrent.Seq.toString = () => 'Concurrent.Seq'
@@ -72,6 +74,21 @@ Concurrent.prototype.interpret = function(interpreter) {
       Seq: (b) => x.interpret(interpreter),
     }), Seq),
   })
+}
+
+// :: Concurrent f a ~> (f -> g) -> Concurrent g a
+Concurrent.prototype.hoist = function(f) {
+  return this.fold(compose(Concurrent.lift)(f), Concurrent)
+}
+
+// :: (Monad f) => Concurrent f a ~> TypeRep f -> f a
+Concurrent.prototype.retract = function(m) {
+  return this.fold(id, m)
+}
+
+// :: Concurrent f a ~> (f -> Concurrent g a) -> Concurrent g a
+Concurrent.prototype.graft = function(f) {
+  return this.fold(f, Concurrent)
 }
 
 // fromPar :: Par (Concurrent f) a -> Concurrent f a

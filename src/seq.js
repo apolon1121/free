@@ -1,7 +1,7 @@
 const { toString, of, map, chain } = require('sanctuary-type-classes')
 const daggy = require('daggy')
 const patchAll = require('./fl-patch')
-const { kcompose } = require('./utils')
+const { id, compose, kcompose } = require('./utils')
 
 // data Seq f a where
 //   Pure :: a -> Seq f a
@@ -11,6 +11,7 @@ const Seq = daggy.taggedSum({
   Roll: ['x', 'y'],
 })
 
+Seq.toString = () => 'Seq'
 Seq.Pure.toString = () => 'Seq.Pure'
 Seq.Roll.toString = () => 'Seq.Roll'
 Seq.prototype.toString = function() {
@@ -46,6 +47,21 @@ Seq.prototype.foldSeq = function(f, T) {
     Pure: a => of(T, a),
     Roll: (x, y) => chain(v => y(v).foldSeq(f, T), f(x)),
   })
+}
+
+// :: Seq f a ~> (f -> g) -> Seq g a
+Seq.prototype.hoistSeq = function(f) {
+  return this.foldSeq(compose(Seq.lift)(f), Seq)
+}
+
+// :: (Monad m) => Seq m a ~> TypeRep m -> m a
+Seq.prototype.retractSeq = function(m) {
+  return this.foldSeq(id, m)
+}
+
+// :: Seq f a ~> (f -> Seq g a) -> Seq g a
+Seq.prototype.graftSeq = function(f) {
+  return this.foldSeq(f, Seq)
 }
 
 patchAll([Seq, Seq.prototype])

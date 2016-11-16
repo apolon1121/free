@@ -3,6 +3,7 @@ const { Test } = require('tap')
 const Ɐ = require('jsverify')
 const { of, map, ap, chain, lift2, lift3 } = require('sanctuary-type-classes')
 const Concurrent = require('../../src/concurrent.js')
+const { id, compose } = require('../../src/utils.js')
 const Par = require('../../src/par.js')
 const Seq = require('../../src/seq.js')
 const patchAll = require('../../src/fl-patch.js')
@@ -72,6 +73,8 @@ module.exports = {
   chain,
   lift2,
   lift3,
+  id,
+  compose,
   Concurrent,
   Par,
   Seq,
