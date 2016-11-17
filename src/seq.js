@@ -1,4 +1,4 @@
-const { toString, of, map, chain } = require('sanctuary-type-classes')
+const { toString, of, map, chain, chainRec } = require('sanctuary-type-classes')
 const daggy = require('daggy')
 const patchAll = require('./fl-patch')
 const { id, compose, kcompose } = require('./utils')
@@ -43,11 +43,19 @@ Seq.prototype.chain = function(f) {
 Seq.lift = (x) => Seq.Roll(x, Seq.Pure)
 
 Seq.prototype.foldSeq = function(f, T) {
-  return this.cata({
-    Pure: a => of(T, a),
-    Roll: (x, y) => chain(v => y(v).foldSeq(f, T), f(x)),
-  })
+  return chainRec(T, (next, done, v) => v.cata({
+    Pure: a => map(done, of(T, a)),
+    Roll: (x, y) => map(compose(next)(y), f(x)),
+  }), this)
 }
+
+const chainRecNext = (value) => ({ done: false, value })
+const chainRecDone = (value) => ({ done: true, value })
+
+Seq.chainRec = (f, i) => chain(
+  ({ done, value }) => done ? of(Seq, value) : chainRec(Seq, f, value),
+  f(chainRecNext, chainRecDone, i)
+)
 
 // :: Seq f a ~> (f -> g) -> Seq g a
 Seq.prototype.hoistSeq = function(f) {

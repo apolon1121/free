@@ -1,4 +1,4 @@
-const { toString, map, chain } = require('sanctuary-type-classes')
+const { toString, map, chain, chainRec } = require('sanctuary-type-classes')
 const daggy = require('daggy')
 const patchAll = require('./fl-patch')
 const Par = require('./par')
@@ -41,6 +41,10 @@ Concurrent.of = a => Concurrent.Seq(Seq.of(a))
 Concurrent.prototype.chain = function(f) {
   return Concurrent.Seq(chain(a => f(a).seq(), this.seq()))
 }
+
+Concurrent.chainRec = (f, i) => Concurrent.Seq(
+  chainRec(Seq, (next, done, v) => f(next, done, v).seq(), i)
+)
 
 Concurrent.prototype.fold = function(f, T) {
   return this.cata({

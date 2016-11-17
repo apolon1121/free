@@ -1,6 +1,6 @@
 const Ɐ = require('jsverify')
 const { test } = require('tap')
-const { Seq, Identity, equals } = require('./lib')
+const { Seq, Identity, Future, id, equals } = require('./lib')
 const lawMonad = require('fantasy-land/laws/monad.js')
 const lawApplicative = require('fantasy-land/laws/applicative.js')
 const lawFunctor = require('fantasy-land/laws/functor.js')
@@ -44,6 +44,22 @@ test('toString', (t) => {
   run('Seq.Roll', Seq.Roll)
   run('Seq.Pure(1)', Seq.Pure(1))
   run('Seq.Roll(1, Seq.Pure)', Seq.Roll(1, Seq.Pure))
+
+  t.end()
+})
+
+test('Is stack safe', t => {
+  const runTimes = (n) => (v) => {
+    const res = Seq.lift(n)
+    if (n === 0) {
+      return res
+    }
+    return res.chain(runTimes(n - 1))
+  }
+
+  runTimes(10000)().foldSeq(Future.of, Future).fork(t.error, (v) => t.equals(v, 0, 'Works with Future'))
+  t.equals(runTimes(10000)().hoistSeq(id).foldSeq(Identity.of, Identity).get(), 0, 'is Seq stack safe')
+  t.equals(runTimes(10000)().foldSeq(Identity.of, Identity).get(), 0, 'Works with Identity')
 
   t.end()
 })
