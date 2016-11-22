@@ -63,6 +63,16 @@ Test.prototype.addAssert('eqWithAccuracy', 3, function(val, expectedVal, valErro
   return this.fail(m, e)
 })
 
+function computeCallStack() {
+  try {
+    return 1 + computeCallStack()
+  } catch (_) {
+    return 1
+  }
+}
+
+const MAX_STACK = computeCallStack()
+
 module.exports = {
   Future,
   FutureAp,
@@ -79,4 +89,5 @@ module.exports = {
   Par,
   Seq,
   equals,
+  MAX_STACK,
 }
