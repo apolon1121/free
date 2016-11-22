@@ -62,7 +62,7 @@ Seq.prototype.hoistSeq = function(f) {
   return this.foldSeq(compose(Seq.lift)(f), Seq)
 }
 
-// :: (Monad m) => Seq m a ~> TypeRep m -> m a
+// :: (Monad m, ChainRec m) => Seq m a ~> TypeRep m -> m a
 Seq.prototype.retractSeq = function(m) {
   return this.foldSeq(id, m)
 }

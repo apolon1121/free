@@ -46,6 +46,7 @@ Concurrent.chainRec = (f, i) => Concurrent.Seq(
   chainRec(Seq, (next, done, v) => f(next, done, v).seq(), i)
 )
 
+// :: (Monad m, ChainRec m) => Concurrent m a ~> TypeRep m -> m a
 Concurrent.prototype.fold = function(f, T) {
   return this.cata({
     Lift: a => f(a),
@@ -85,7 +86,7 @@ Concurrent.prototype.hoist = function(f) {
   return this.fold(compose(Concurrent.lift)(f), Concurrent)
 }
 
-// :: (Monad f) => Concurrent f a ~> TypeRep f -> f a
+// :: (Monad m, ChainRec m) => Concurrent m a ~> TypeRep m -> m a
 Concurrent.prototype.retract = function(m) {
   return this.fold(id, m)
 }
