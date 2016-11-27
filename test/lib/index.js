@@ -6,16 +6,16 @@ const Concurrent = require('../../src/concurrent.js')
 const { id, compose } = require('../../src/utils.js')
 const Par = require('../../src/par.js')
 const Seq = require('../../src/seq.js')
-const patchAll = require('../../src/fl-patch.js')
+const patch = require('../../src/fl-patch.js')
 const fl = require('fantasy-land')
 const { Future, Identity } = require('ramda-fantasy')
 
 // make Future and Identity compatible with FL@1.0.x
-patchAll([
+;[
   Future, Future.prototype,
   FutureAp, FutureAp.prototype,
   Identity, Identity.prototype,
-])
+].map(patch.mutate)
 
 var fixedAp = function(m) { return m[fl.chain](f => this[fl.map](f)) }
 Future.prototype[fl.ap] = fixedAp

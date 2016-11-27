@@ -1,59 +1,13 @@
 const { toString, map, chain, chainRec } = require('sanctuary-type-classes')
-const daggy = require('daggy')
-const patchAll = require('./fl-patch')
-const Par = require('./par')
-const Seq = require('./seq')
-const { id, compose } = require('./utils')
+const patch = require('./fl-patch')
+const _Par = require('./par')
+const _Seq = require('./seq')
+const { id, compose, extend, isTag, matchTag } = require('./utils')
 
 // data Concurrent f a where
 //   Lift :: f a -> Concurrent f a
 //   Seq :: Seq (Concurrent f) a -> Concurrent f a
 //   Par :: Par (Concurrent f) a -> Concurrent f a
-const Concurrent = daggy.taggedSum({
-  Lift: ['a'],
-  Seq: ['a'],
-  Par: ['a'],
-})
-
-Concurrent.toString = () => 'Concurrent'
-Concurrent.Lift.toString = () => 'Concurrent.Lift'
-Concurrent.Par.toString = () => 'Concurrent.Par'
-Concurrent.Seq.toString = () => 'Concurrent.Seq'
-Concurrent.prototype.toString = function() {
-  return this.cata({
-    Lift: (a) => `Concurrent.Lift(${toString(a)})`,
-    Seq: (a) => `Concurrent.Seq(${toString(a)})`,
-    Par: (a) => `Concurrent.Par(${toString(a)})`,
-  })
-}
-Concurrent.lift = Concurrent.Lift
-
-Concurrent.prototype.map = function(f) {
-  return Concurrent.Seq(map(f, this.seq()))
-}
-
-Concurrent.prototype.ap = function(mf) {
-  return chain(f => map(f, this), mf)
-}
-
-Concurrent.of = a => Concurrent.Seq(Seq.of(a))
-
-Concurrent.prototype.chain = function(f) {
-  return Concurrent.Seq(chain(a => f(a).seq(), this.seq()))
-}
-
-Concurrent.chainRec = (f, i) => Concurrent.Seq(
-  chainRec(Seq, (next, done, v) => f(next, done, v).seq(), i)
-)
-
-// :: (Monad m, ChainRec m) => Concurrent m a ~> TypeRep m -> m a
-Concurrent.prototype.fold = function(f, T) {
-  return this.cata({
-    Lift: a => f(a),
-    Par: a => a.foldPar(b => b.fold(f, T), T),
-    Seq: a => a.foldSeq(b => b.fold(f, T), T),
-  })
-}
 
 // data Interpreter f g m = Interpreter
 //   { runSeq :: forall x. f x -> m x
@@ -64,62 +18,117 @@ Concurrent.prototype.fold = function(f, T) {
 //   , Seq :: TypeRep m
 //   }
 
-Concurrent.prototype.interpret = function(interpreter) {
-  const { runSeq, runPar, seqToPar, parToSeq, Seq, Par } = interpreter
-  return this.cata({
-    Lift: a => runSeq(a),
-    Par: a => a.foldPar(x => x.cata({
-      Lift: (b) => runPar(b),
-      Par: (b) => x.interpret(interpreter),
-      Seq: (b) => seqToPar(x.interpret(interpreter)),
-    }), Par),
-    Seq: a => a.foldSeq(x => x.cata({
-      Lift: (b) => runSeq(b),
-      Par: (b) => parToSeq(x.interpret(interpreter)),
-      Seq: (b) => x.interpret(interpreter),
-    }), Seq),
-  })
+function Lift(a) {
+  return extend(Concurrent$proto, { a, tag: LIFT })
 }
 
-// :: Concurrent f a ~> (f -> g) -> Concurrent g a
-Concurrent.prototype.hoist = function(f) {
-  return this.fold(compose(Concurrent.lift)(f), Concurrent)
+function Seq(a) {
+  return extend(Concurrent$proto, { a, tag: SEQ })
 }
 
-// :: (Monad m, ChainRec m) => Concurrent m a ~> TypeRep m -> m a
-Concurrent.prototype.retract = function(m) {
-  return this.fold(id, m)
+function Par(a) {
+  return extend(Concurrent$proto, { a, tag: PAR })
 }
 
-// :: Concurrent f a ~> (f -> Concurrent g a) -> Concurrent g a
-Concurrent.prototype.graft = function(f) {
-  return this.fold(f, Concurrent)
-}
+Lift.toString = () => 'Concurrent.Lift'
+Seq.toString = () => 'Concurrent.Seq'
+Par.toString = () => 'Concurrent.Par'
 
-// fromPar :: Par (Concurrent f) a -> Concurrent f a
-Concurrent.fromPar = Concurrent.Par
+const LIFT = 'Lift'
+const SEQ = 'Seq'
+const PAR = 'Par'
+const CONCURRENT = 'Concurrent'
 
-// fromSeq :: Seq (Concurrent f) a -> Concurrent f a
-Concurrent.fromSeq = Concurrent.Seq
+const Concurrent = patch({
+  Lift,
+  Seq,
+  Par,
+  of: a => Seq(_Seq.of(a)),
+  lift: Lift,
+  // fromPar :: Par (Concurrent f) a -> Concurrent f a
+  fromPar: Par,
+  // fromSeq :: Seq (Concurrent f) a -> Concurrent f a
+  fromSeq: Seq,
+  toString: () => 'Concurrent',
+  chainRec: (f, i) => Seq(
+    chainRec(_Seq, (next, done, v) => f(next, done, v).seq(), i)
+  ),
+})
 
-// :: Concurrent f a -> Seq (Concurrent f) a
-Concurrent.prototype.seq = function() {
-  return this.cata({
-    Lift: () => Seq.lift(this),
-    Seq: (a) => a,
-    Par: () => Seq.lift(this),
-  })
-}
-
-// :: Concurrent f a -> Par (Concurrent f) a
-Concurrent.prototype.par = function() {
-  return this.cata({
-    Lift: () => Par.lift(this),
-    Seq: () => Par.lift(this),
-    Par: (a) => a,
-  })
-}
-
-patchAll([Concurrent, Concurrent.prototype])
+const Concurrent$proto = patch({
+  '@@type': CONCURRENT,
+  constructor: Concurrent,
+  // :: Concurrent f a ~> String
+  toString: function() {
+    return matchTag({
+      Lift: ({ a }) => `Concurrent.Lift(${toString(a)})`,
+      Seq: ({ a }) => `Concurrent.Seq(${toString(a)})`,
+      Par: ({ a }) => `Concurrent.Par(${toString(a)})`,
+    }, this)
+  },
+  // :: Concurrent f a ~> (a -> b) -> Concurrent f b
+  map(f) {
+    return Seq(map(f, this.seq()))
+  },
+  // :: Concurrent f a ~> Concurrent f (a -> b) -> Concurrent f b
+  ap(mf) {
+    return chain(f => map(f, this), mf)
+  },
+  // :: Concurrent f a ~> (a -> Concurrent f b) -> Concurrent f b
+  chain(f) {
+    return Seq(chain(a => f(a).seq(), this.seq()))
+  },
+  // :: (Monad m, ChainRec m) => Concurrent f a ~> (f -> m, TypeRep m) -> m a
+  fold(f, T) {
+    return matchTag({
+      Lift: ({ a }) => f(a),
+      Par: ({ a }) => a.foldPar(b => b.fold(f, T), T),
+      Seq: ({ a }) => a.foldSeq(b => b.fold(f, T), T),
+    }, this)
+  },
+  // :: Concurrent f a -> Seq (Concurrent f) a
+  seq() {
+    if (isTag(SEQ, this)) {
+      return this.a
+    }
+    return _Seq.lift(this)
+  },
+  // :: Concurrent f a -> Par (Concurrent f) a
+  par() {
+    if (isTag(PAR, this)) {
+      return this.a
+    }
+    return _Par.lift(this)
+  },
+  // (Monad m, ChainRec m, Applicative g) => Concurrent f a ~> Interpreter f g m -> m a
+  interpret(interpreter) {
+    const { runSeq, runPar, seqToPar, parToSeq, Seq, Par } = interpreter
+    return matchTag({
+      Lift: ({ a }) => runSeq(a),
+      Par: ({ a }) => a.foldPar(x => matchTag({
+        Lift: ({ a }) => runPar(a),
+        Par: ({ a }) => x.interpret(interpreter),
+        Seq: ({ a }) => seqToPar(x.interpret(interpreter)),
+      }, x), Par),
+      Seq: ({ a }) => a.foldSeq(x => matchTag({
+        Lift: ({ a }) => runSeq(a),
+        Par: ({ a }) => parToSeq(x.interpret(interpreter)),
+        Seq: ({ a }) => x.interpret(interpreter),
+      }, x), Seq),
+    }, this)
+  },
+  // :: Concurrent f a ~> (f -> g) -> Concurrent g a
+  hoist(f) {
+    return this.fold(compose(Concurrent.lift)(f), Concurrent)
+  },
+  // :: (Monad m, ChainRec m) => Concurrent m a ~> TypeRep m -> m a
+  retract(m) {
+    return this.fold(id, m)
+  },
+  // :: Concurrent f a ~> (f -> Concurrent g a) -> Concurrent g a
+  graft(f) {
+    return this.fold(f, Concurrent)
+  },
+})
 
 module.exports = Concurrent
