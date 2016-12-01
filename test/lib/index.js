@@ -3,7 +3,7 @@ const { Test } = require('tap')
 const Ɐ = require('jsverify')
 const { of, map, ap, chain, lift2, lift3 } = require('sanctuary-type-classes')
 const Concurrent = require('../../src/concurrent.js')
-const { id, compose } = require('../../src/utils.js')
+const { id, compose, union } = require('../../src/utils.js')
 const Par = require('../../src/par.js')
 const Seq = require('../../src/seq.js')
 const patch = require('../../src/fl-patch.js')
@@ -90,4 +90,5 @@ module.exports = {
   Seq,
   equals,
   MAX_STACK,
+  union,
 }
