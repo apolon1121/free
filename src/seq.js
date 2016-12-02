@@ -19,7 +19,7 @@ const chainRecDone = (value) => ({ done: true, value })
 Object.assign(Seq, patch({
   // :: a -> Seq f a
   of: Pure,
-  // :: f -> Seq f a
+  // :: f a -> Seq f a
   lift: (x) => Roll(x, Pure),
   // :: ((a -> c, b -> c, a) -> Seq f c, a) -> Seq f b
   chainRec: (f, i) => chain(
@@ -47,14 +47,14 @@ Object.assign(Seq.prototype, patch({
       Roll: (x, y) => Seq.Roll(x, kcompose(f)(y)),
     })
   },
-  // :: (Monad m, ChainRec m) => Seq f a ~> (f -> m, TypeRep m) -> m a
+  // :: (Monad m, ChainRec m) => Seq f a ~> (Ɐ x. f x -> m x, TypeRep m) -> m a
   foldSeq(f, T) {
     return chainRec(T, (next, done, v) => v.cata({
       Pure: (a) => map(done, of(T, a)),
       Roll: (x, y) => map(compose(next)(y), f(x)),
     }), this)
   },
-  // :: Seq f a ~> (f -> g) -> Seq g a
+  // :: Seq f a ~> (Ɐ x. f x -> g x) -> Seq g a
   hoistSeq(f) {
     return this.foldSeq(compose(Seq.lift)(f), Seq)
   },
@@ -62,7 +62,7 @@ Object.assign(Seq.prototype, patch({
   retractSeq(m) {
     return this.foldSeq(id, m)
   },
-  // :: Seq f a ~> (f -> Seq g a) -> Seq g a
+  // :: Seq f a ~> (Ɐ x. f x -> Seq g x) -> Seq g a
   graftSeq(f) {
     return this.foldSeq(f, Seq)
   },

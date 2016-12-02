@@ -5,8 +5,8 @@ const { id, compose, union } = require('./utils')
 const flip = f => b => a => f(a)(b)
 
 // data Par f a where
-//   Pure :: {a :: a} -> Par f a
-//   Apply :: {x :: f a, y :: Par f (a -> b)} -> Par f b
+//   Pure  :: a -> Par f a
+//   Apply :: f a -> Par f (a -> b) -> Par f b
 const Par = union('Par', {
   Pure: ['a'],
   Apply: ['x', 'y'],
@@ -17,7 +17,7 @@ const { Pure, Apply } = Par
 Object.assign(Par, patch({
   // :: a -> Par f a
   of: Pure,
-  // :: f -> Par f a
+  // :: f a -> Par f a
   lift: (x) => Apply(x, Pure(id)),
 }))
 
@@ -36,7 +36,7 @@ Object.assign(Par.prototype, patch({
       Apply: (x, y) => Apply(pf.x, lift2(flip, pf.y, this)),
     })
   },
-  // :: (Applicative m) => Par f a ~> (f -> m, TypeRep m) -> m a
+  // :: (Applicative g) => Par f a ~> (Ɐ x. f x -> g x, TypeRep g) -> g a
   foldPar(f, T) {
     return this.cata({
       Pure: (a) => of(T, a),
@@ -48,7 +48,7 @@ Object.assign(Par.prototype, patch({
       },
     })
   },
-  // :: Par f a ~> (f -> g) -> Par g a
+  // :: Par f a ~> (Ɐ x. f x -> g x) -> Par g a
   hoistPar(f) {
     return this.foldPar(compose(Par.lift)(f), Par)
   },
@@ -56,7 +56,7 @@ Object.assign(Par.prototype, patch({
   retractPar(m) {
     return this.foldPar(id, m)
   },
-  // :: Par f a ~> (f -> Par g a) -> Par g a
+  // :: Par f a ~> (Ɐ x. f x -> Par g x) -> Par g a
   graftPar(f) {
     return this.foldPar(f, Par)
   },
