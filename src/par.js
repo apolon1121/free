@@ -15,7 +15,9 @@ const Par = union('Par', {
 const { Pure, Apply } = Par
 
 Object.assign(Par, patch({
+  // :: a -> Par f a
   of: Pure,
+  // :: f -> Par f a
   lift: (x) => Apply(x, Pure(id)),
 }))
 

@@ -27,12 +27,15 @@ const Concurrent = union('Concurrent', {
 const {Lift, Seq, Par} = Concurrent
 
 Object.assign(Concurrent, patch({
+  // :: a -> Concurrent f a
   of: a => Seq(_Seq.of(a)),
+  // :: f -> Concurrent f a
   lift: Lift,
   // fromPar :: Par (Concurrent f) a -> Concurrent f a
   fromPar: Par,
   // fromSeq :: Seq (Concurrent f) a -> Concurrent f a
   fromSeq: Seq,
+  // :: ((a -> c, b -> c, a) -> Seq f c, a) -> Seq f b
   chainRec: (f, i) => Seq(
     chainRec(_Seq, (next, done, v) => f(next, done, v).seq(), i)
   ),

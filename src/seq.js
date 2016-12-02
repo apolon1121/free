@@ -17,8 +17,11 @@ const chainRecNext = (value) => ({ done: false, value })
 const chainRecDone = (value) => ({ done: true, value })
 
 Object.assign(Seq, patch({
+  // :: a -> Seq f a
   of: Pure,
+  // :: f -> Seq f a
   lift: (x) => Roll(x, Pure),
+  // :: ((a -> c, b -> c, a) -> Seq f c, a) -> Seq f b
   chainRec: (f, i) => chain(
     ({ done, value }) => done ? of(Seq, value) : chainRec(Seq, f, value),
     f(chainRecNext, chainRecDone, i)
